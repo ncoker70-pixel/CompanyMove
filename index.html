@@ -559,7 +559,7 @@ function kartImg(base, i, pop) { return (pop && IMG[`${base}_pop_${i}`]) || IMG[
 const YAWS = [0, 8, 16, 26, 38].map(d => d * Math.PI / 180);
 function yawPos(yaw) { const a = Math.min(Math.abs(yaw), YAWS[4]); let i = 0; while (i < 3 && a > YAWS[i + 1]) i++; return Math.sign(yaw) * (i + (a - YAWS[i]) / (YAWS[i + 1] - YAWS[i])); }
 // frames only change once the angle is clearly past the halfway point, so they never flicker
-function yawFrame(yaw, prev) { const c = yawPos(yaw); return Math.abs(c - prev) > .62 ? clamp(Math.round(c), -4, 4) : prev; }
+function yawFrame(yaw, prev) { const c = yawPos(yaw); return Math.abs(c - prev) > .55 ? clamp(Math.round(c), -4, 4) : prev; }
 // Every frame of the turn sheet is anchored at the rear face, so on its own a turning rig pivots on its back bumper and
 // the back never moves. Shifting the sprite against the nose by half the side that comes into view pivots it on its
 // middle instead, so the back end swings out the way a kart's does. (Sprite pixels at scale 1, per frame.)
@@ -7219,8 +7219,11 @@ function updateCars(dt, frozen) {
     aiItems(car, dt);
     car.lap = LOOP ? clamp(Math.floor(car.s / TRACKLEN) + 1, 1, LAPS) : 1;
     if (!car.finished && car.s >= FINISH_S) { car.finished = true; car.finishT = raceT; car.cheerT = car.place <= 3 ? 2.5 : 0; }
-    // the frame they show you: their angle to your camera, drifting rigs angled into the bend
-    const yaw = angd(car.a + car.driftDir * .32, cam.a);
+    // the frame they show you: their angle to your camera, plus the way they're turning right now (the
+    // rate their nose is swinging, smoothed), so a rig going round a bend or changing lanes shows its side and steers into
+    // it, instead of sliding across the road as a cut-out of its back end (Nick); drifting rigs angle into the bend further
+    { const dA = angd(car.a, car.prevA == null ? car.a : car.prevA) / Math.max(dt, 1e-3); car.prevA = car.a; car.wRate = (car.wRate || 0) + (dA - (car.wRate || 0)) * Math.min(1, dt * 8); }
+    const yaw = angd(car.a, cam.a) + car.driftDir * .32 + clamp((car.wRate || 0) * .45, -.35, .35) + Math.atan2(car.vd, Math.max(30, car.v)) * .4;
     if (car.spinT > 0) { car.spinPh += dt * 15; car.frame = clamp(Math.round(4.4 * Math.sin(car.spinPh) * Math.min(1, car.spinT / .7)), -4, 4); }
     else car.frame = yawFrame(yaw, car.frame);
   }
