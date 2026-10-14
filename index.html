@@ -836,7 +836,7 @@ function dressCourse() {
     const z = ZONE[k];
     if (z !== 'tunnel' && k % 5 === 2) for (const side of [-1, 1]) put(k, side * (EDGE_ROAD + 1.5), S.post, 1.1, { force: true });
     if (z !== 'tunnel' && k % 14 === 0) for (const side of [-1, 1]) put(k, side * (FENCE + 9), S.lamp, 2.3, { force: true });
-    if (z === 'tunnel') { if (k % 3 === 0) for (const side of [-1, 1]) put(k, side * (FENCE + 2), ART1.murals[(k / 3 + (side > 0 ? 2 : 0)) % 4], 1.5, { force: true, far: 80 }); continue; }
+    if (z === 'tunnel') { if (k % 2 === 0) for (const side of [-1, 1]) put(k, side * (FENCE + 4), ART1.murals[(k / 2 + (side > 0 ? 2 : 0)) % 4], .85, { force: true, far: 80, maxF: 170 }); continue; }   // narrower panels, closer together, and none past 170: a wide billboard on the far side of the bend used to lie across the road
     if (z === 'base') {
       if (k % 26 === 6) put(k, (k % 52 < 26 ? 1 : -1) * (FENCE + 26), S.trailers[(k / 26 | 0) % 4], 2.0);
       if (k % 10 === 0) for (const side of [-1, 1]) put(k, side * (EDGE_ROAD + 4), S.cone, 1.2, { force: true, cone: true });
