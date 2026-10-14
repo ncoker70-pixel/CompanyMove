@@ -6888,7 +6888,10 @@ const RIVAL_LINES = { taunt: ['MOVE IT, LOCAL!', 'SEE YA AT WRAP!', 'OUTTA THE S
 const TOP = 165;
 // heavy rigs (the honeywagons): what their bulk buys them
 const HEAVY = r => (r.weight || 1) >= 1.4;
-const HV = { grass: .62, walk: .95, hitKeep: .15, spin: .8, cash: 1, brake: .7 };
+const HV = { grass: .7, walk: .95, hitKeep: .15, spin: .8, cash: 1, brake: .7 };
+// off the road: the share of top speed each class keeps, after Super Mario Kart (the light karts keep the most, the heavy
+// ones the least: Koopa 86%, Mario 74%, Bowser 75% of their road speed)
+const OFFROAD = { LIGHT: .82, MEDIUM: .74, HEAVY: .7 };
 // eight slots, two by two; the player starts at the back, like the first race of a cup
 const GRID = [[-20, -18], [-20, 18], [-44, -18], [-44, 18], [-68, -18], [-68, 18], [-92, -18], [-92, 18]];
 
@@ -6956,7 +6959,7 @@ function updatePlayer(dt) {
   updateRoll(P, dt);
   if (racing && c.itemTap && P.item && P.spinT <= 0) useItem(P);
   // --- surface and speed
-  const hv = HEAVY(P), erP = edgeRoadAt(P.k, P.lat), surf = sysSurf(P, aoff < erP ? 1 : aoff < erP + WALK ? (hv ? HV.walk : .9) : (hv ? HV.grass : .5));   // a honeywagon plows through; a runaway ramp is paved but for its bed (systems4.js)
+  const hv = HEAVY(P), erP = edgeRoadAt(P.k, P.lat), surf = sysSurf(P, aoff < erP ? 1 : aoff < erP + WALK ? (hv ? HV.walk : .9) : (OFFROAD[d.cls] || .74));   // a honeywagon plows through; a runaway ramp is paved but for its bed (systems4.js)
   const immune = P.boostT > 0 || P.starT > 0 || esc;
   let top = top0 * (immune ? 1 : surf) * sysTop(P, P.k, P.m);   // the wind and a wet road (systems.js)
   if (P.starT > 0) top *= 1.12;
@@ -6973,10 +6976,10 @@ function updatePlayer(dt) {
   else if (gas && !brake) P.v += TOP * d.accel * (.78 * (1 - Math.pow(top > 0 ? clamp(P.v / top, 0, 1) : 1, 2)) + .05) * dt;
   else if (brake) P.v = P.v > 2 ? P.v - TOP * 1.3 * (hv ? HV.brake : 1) * dt : Math.max(-TOP * .28, P.v - TOP * .55 * dt);   // the honeywagon takes forever to stop
   else P.v -= Math.sign(P.v) * Math.min(Math.abs(P.v), TOP * (P.spinT > 0 ? .9 : P.boilT > 0 ? .12 : .28) * dt);
-  if (P.v > top) P.v -= Math.min(P.v - top, TOP * (P.offroad ? 1.6 : .7) * dt);
+  if (P.v > top) P.v -= Math.min(P.v - top, TOP * (P.offroad ? .9 : .7) * dt);   // off the road the speed bleeds away, it isn't slammed off (SMK: it loses speed slowly if you lift)
   // --- turning: the nose turns; in a drift the rig slides, trailing the nose
   const sp = Math.abs(P.v) / (TOP * d.top), bite = clamp(sp / .22, 0, 1), grip = (.35 + .65 * bite) * (air ? .4 : 1);
-  let w = P.steer * d.turn * grip * (1 - .3 * Math.min(1.2, sp)) * (P.v < -1 ? -1 : 1);   // at full speed a plain turn can't take a hairpin: drift it or lift
+  let w = P.steer * d.turn * grip * (1 - .15 * Math.min(1.2, sp)) * (P.v < -1 ? -1 : 1);   // a kart stays nimble at speed (SMK's wheel turns about the same at any speed); a hairpin still wants a drift
   if (P.drift) {
     // Mario Kart's drift: it always turns into the bend. Stick in the middle holds an ordinary bend, into the bend
     // tightens it to a hairpin, away from the bend opens it right up. The rig's nose swings out (P.slip, drawn only).
@@ -7030,7 +7033,7 @@ function updatePlayer(dt) {
       if (P.v > TOP * .3 && P.wallCool <= 0) { sfx.bonk(); P.wallCool = .5; P.bonks = (P.bonks || 0) + 1; }
       if (P.drift) endDrift(true);
     }
-    P.v *= Math.max(.75, 1 - Math.abs(vn) * .5);
+    P.v *= Math.max(.45, 1 - Math.abs(vn) * .75);   // a wall hit square on costs most of your speed (SMK); a scrape along it costs little
   }
   if (!LOOP) {   // the two ends of a point-to-point road are walls
     const al = (P.x - CX[P.k]) * TX[P.k] + (P.y - CY[P.k]) * TY[P.k];
@@ -7233,9 +7236,10 @@ function updateCars(dt, frozen) {
   }
 }
 function updateCam(dt) {
-  let tgt = P.v < -2 ? P.a : P.m + angd(P.a, P.m) * .35;
-  if (P.spinT > 0) tgt = P.m;
-  cam.a += angd(tgt, cam.a) * (1 - Math.exp(-dt * (P.drift ? 9 : 10)));
+  // Super Mario Kart's camera: the view is the kart's facing (Mode 7 rotates the world to the heading, and the gas
+  // pushes you the way the screen faces), so in a drift the rig slides sideways across the road while the nose leads
+  let tgt = P.spinT > 0 ? P.m : P.a;
+  cam.a += angd(tgt, cam.a) * (1 - Math.exp(-dt * (P.drift ? 12 : 14)));
   cam.x = P.x - Math.cos(cam.a) * CAM_DIST; cam.y = P.y - Math.sin(cam.a) * CAM_DIST;
 }
 function snapCam() { cam.a = P.a; cam.x = P.x - Math.cos(cam.a) * CAM_DIST; cam.y = P.y - Math.sin(cam.a) * CAM_DIST; }
